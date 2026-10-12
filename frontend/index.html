@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ÉLAN — Dress Rental & Accounting System</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">É</div>
+        <div class="brand-text">
+          <span class="brand-title">ÉLAN</span>
+          <span class="brand-sub">Dress Rental</span>
+        </div>
+      </div>
+      <div class="nav-label">Menu Utama</div>
+      <button class="nav-button active" data-page="dashboard">Dashboard</button>
+      <button class="nav-button" data-page="dresses">Data Dress</button>
+      <button class="nav-button" data-page="rentals">Penyewaan</button>
+      <button class="nav-button" data-page="payments">Pembayaran</button>
+      <button class="nav-button" data-page="returns">Pengembalian</button>
+      <button class="nav-button" data-page="reports">Laporan</button>
+      <div class="sidebar-footer">Rental &amp; Accounting</div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">Rental &amp; Accounting</span>
+          <h1 id="pageTitle">Dashboard</h1>
+        </div>
+        <div id="todayLabel" class="date-pill">Tanggal</div>
+      </header>
+
+      <!-- DASHBOARD -->
+      <section id="dashboardPage" class="page active">
+        <div class="hero">
+          <div>
+            <small>Selamat datang di ÉLAN</small>
+            <h2>Kelola penyewaan dress dengan rapi dan profesional.</h2>
+            <p>Pantau ketersediaan koleksi dress secara langsung.</p>
+            <button type="button" class="primary-btn" id="dashboardAddRental">+ Tambah Transaksi Penyewaan</button>
+          </div>
+          <div class="hero-badge">É</div>
+        </div>
+        <div class="stats-grid">
+          <article class="stat-card"><small>Total Dress</small><strong id="statDressTotal">—</strong><span>Item inventaris</span></article>
+          <article class="stat-card"><small>Tersedia</small><strong id="statDressAvailable">—</strong><span>Status tersedia</span></article>
+          <article class="stat-card"><small>Disewa</small><strong id="statDressRented">—</strong><span>Status disewa</span></article>
+        </section>
+      </section>
+
+      <!-- DRESSES -->
+      <section id="dressesPage" class="page">
+        <div class="panel">
+          <div class="panel-header">
+            <div><h3>Data Dress</h3><p>Kelola inventaris dress</p></div>
+            <button class="secondary-btn" id="refreshDresses">Muat Ulang</button>
+          </div>
+          <form id="dressForm" class="form-grid">
+            <input type="hidden" id="dressId" />
+            <div class="field"><label for="dressCodeDisplay">Kode Dress</label><input id="dressCodeDisplay" type="text" placeholder="Dibuat otomatis" required /></div>
+            <div class="field"><label for="nama_dress">Nama Dress</label><input id="nama_dress" required /></div>
+            <div class="field"><label for="ukuran">Ukuran</label><input id="ukuran" placeholder="S, M, L, XL" required /></div>
+            <div class="field"><label for="warna">Warna</label><input id="warna" required /></div>
+            <div class="field"><label for="tarif_sewa">Tarif Sewa (Rp)</label><input id="tarif_sewa" type="number" min="0" step="1000" required /></div>
+            <div class="field">
+              <label for="dressStatus">Status</label>
+              <select id="dressStatus">
+                <option value="Tersedia">Tersedia</option>
+                <option value="Disewa">Disewa</option>
+                <option value="Laundry">Laundry</option>
+                <option value="Rusak">Rusak</option>
+                <option value="Hilang">Hilang</option>
+              </select>
+            </div>
+            <div class="field form-actions">
+              <button type="submit" class="primary-btn" id="dressSubmit">Tambah Dress</button>
+              <button type="button" class="secondary-btn hidden" id="dressCancel">Batal</button>
+            </div>
+          </form>
+          <div class="filter-bar">
+            <input id="dressSearch" placeholder="Cari kode atau nama dress..." />
+            <select id="dressFilterStatus">
+              <option value="">Semua status</option>
+              <option value="Tersedia">Tersedia</option>
+              <option value="Disewa">Disewa</option>
+              <option value="Laundry">Laundry</option>
+              <option value="Rusak">Rusak</option>
+              <option value="Hilang">Hilang</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel"><div id="dressesTable"></div></div>
+      </section>
+
+      <!-- RENTALS -->
+      <section id="rentalsPage" class="page">
+        <div class="panel">
+          <div class="panel-header"><div><h3>Transaksi Penyewaan</h3><p>Buat penyewaan baru dan kelola pembayarannya</p></div></div>
+          <form id="rentalForm" class="form-grid">
+            <div class="field"><label for="rentalCode">Kode Penyewaan</label><input id="rentalCode" type="text" placeholder="Dibuat otomatis" required /></div>
+            <div class="field"><label for="id_dress">Dress</label><select id="id_dress" required><option value="">Pilih dress</option></select></div>
+            <div class="field"><label for="nama_pelanggan">Nama Pelanggan</label><input id="nama_pelanggan" required /></div>
+            <div class="field"><label for="no_telepon">No. Telepon</label><input id="no_telepon" required /></div>
+            <div class="field"><label for="email">Email</label><input id="email" type="email" /></div>
+            <div class="field"><label for="alamat">Alamat</label><input id="alamat" /></div>
+            <div class="field"><label for="tanggal_sewa">Tanggal Sewa</label><input id="tanggal_sewa" type="date" required /></div>
+            <div class="field"><label for="tanggal_rencana_kembali">Rencana Kembali</label><input id="tanggal_rencana_kembali" type="date" required /></div>
+            <div class="field"><label for="tarif_sewa_rental">Tarif Sewa</label><input id="tarif_sewa_rental" type="number" min="0" step="1000" required /></div>
+            <div class="field"><label for="total_sewa">Total Sewa</label><input id="total_sewa" type="number" min="0" step="1000" required /></div>
+            <div class="field"><label for="dp">DP Awal (opsional)</label><input id="dp" type="number" min="0" step="1000" value="0" /></div>
+            <div class="field hidden" id="dpCodeField"><label for="dpPaymentCode">Kode Pembayaran DP</label><input id="dpPaymentCode" type="text" placeholder="Dibuat otomatis" /></div>
+            <div class="field form-actions"><button type="submit" class="primary-btn">Simpan Penyewaan</button></div>
+          </form>
+          <div class="filter-bar">
+            <input id="rentalSearch" placeholder="Cari kode / pelanggan..." />
+            <select id="rentalFilterStatus">
+              <option value="">Semua status</option>
+              <option value="Dipesan">Dipesan</option>
+              <option value="Berjalan">Berjalan</option>
+              <option value="Selesai">Selesai</option>
+              <option value="Dibatalkan">Dibatalkan</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel"><div id="rentalsTable"></div></div>
+      </section>
+
+      <!-- PAYMENTS -->
+      <section id="paymentsPage" class="page">
+        <div class="panel">
+          <div class="panel-header"><div><h3>Pembayaran</h3><p>Catat DP, cicilan, pelunasan, dan denda</p></div></div>
+          <form id="paymentForm" class="form-grid">
+            <div class="field"><label for="paymentCode">Kode Pembayaran</label><input id="paymentCode" type="text" placeholder="Dibuat otomatis" required /></div>
+            <div class="field"><label for="paymentRentalId">Penyewaan</label><select id="paymentRentalId" required><option value="">Pilih transaksi</option></select></div>
+            <div class="field">
+              <label for="jenis_pembayaran">Jenis Pembayaran</label>
+              <select id="jenis_pembayaran" required>
+                <option value="DP">DP</option>
+                <option value="Cicilan">Cicilan</option>
+                <option value="Pelunasan">Pelunasan</option>
+                <option value="Denda">Denda</option>
+              </select>
+            </div>
+            <div class="field hidden" id="fineCategoryField">
+              <label for="fineCategory">Kategori Denda</label>
+              <select id="fineCategory">
+                <option value="Keterlambatan">Keterlambatan</option>
+                <option value="Kerusakan/Kehilangan">Kerusakan/Kehilangan</option>
+              </select>
+            </div>
+            <div class="field"><label for="tanggal_bayar">Tanggal Bayar</label><input id="tanggal_bayar" type="date" required /></div>
+            <div class="field"><label for="jumlah_bayar">Jumlah Bayar (Rp)</label><input id="jumlah_bayar" type="number" min="0.01" step="0.01" required /></div>
+            <div class="field">
+              <label for="metode_pembayaran">Metode</label>
+              <select id="metode_pembayaran">
+                <option value="Tunai">Tunai</option>
+                <option value="Transfer Bank">Transfer Bank</option>
+                <option value="QRIS">QRIS</option>
+              </select>
+            </div>
+            <div class="field"><label for="referensi">Referensi</label><input id="referensi" placeholder="Kode penyewaan dan pengembalian diisi otomatis untuk denda" /></div>
+            <div class="field form-actions"><button type="submit" class="primary-btn">Catat Pembayaran</button></div>
+          </form>
+          <h3>Tagihan Denda Belum Lunas</h3>
+          <p>Pilih tagihan untuk mengisi transaksi pembayaran dengan referensi penyewaan asal.</p>
+          <div id="fineInvoicesTable"></div>
+          <div class="filter-bar">
+            <input id="paymentSearch" placeholder="Cari kode pembayaran / penyewaan..." />
+            <select id="paymentFilterJenis">
+              <option value="">Semua jenis</option>
+              <option value="DP">DP</option>
+              <option value="Cicilan">Cicilan</option>
+              <option value="Pelunasan">Pelunasan</option>
+              <option value="Denda">Denda</option>
+            </select>
+            <select id="paymentFilterStatus">
+              <option value="">Semua status</option>
+              <option value="Berhasil">Berhasil</option>
+              <option value="Dibatalkan">Dibatalkan</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel"><div id="paymentsTable"></div></div>
+      </section>
+
+      <!-- RETURNS -->
+      <section id="returnsPage" class="page">
+        <div class="panel">
+          <div class="panel-header"><div><h3>Pengembalian Dress</h3><p>Catat pengembalian dan denda</p></div></div>
+          <form id="returnForm" class="form-grid">
+            <div class="field"><label for="returnCode">Kode Pengembalian</label><input id="returnCode" type="text" placeholder="Dibuat otomatis" required /></div>
+            <div class="field"><label for="returnRentalId">Penyewaan</label><select id="returnRentalId" required><option value="">Pilih transaksi</option></select></div>
+            <div class="field"><label for="tanggal_kembali_aktual">Tanggal Kembali</label><input id="tanggal_kembali_aktual" type="date" required /></div>
+            <div class="field">
+              <label for="kondisi_dress">Kondisi Dress</label>
+              <select id="kondisi_dress" required>
+                <option value="Baik">Baik</option>
+                <option value="Rusak">Rusak</option>
+                <option value="Hilang">Hilang</option>
+              </select>
+            </div>
+            <div class="field"><label for="denda_keterlambatan">Denda Keterlambatan</label><input id="denda_keterlambatan" type="number" min="0" step="1000" value="0" /></div>
+            <div class="field"><label for="denda_kerusakan">Denda Kerusakan/Kehilangan</label><input id="denda_kerusakan" type="number" min="0" step="1000" value="0" /></div>
+            <div class="field"><label for="catatan">Catatan</label><input id="catatan" /></div>
+            <div class="field form-actions"><button type="submit" class="primary-btn">Simpan Pengembalian</button></div>
+          </form>
+        </div>
+        <div class="panel"><div id="returnsTable"></div></div>
+      </section>
+
+      <!-- REPORTS -->
+      <section id="reportsPage" class="page">
+        <div class="panel">
+          <div class="panel-header">
+            <div><h3>Laporan</h3><p>Ringkasan pendapatan, piutang, dan denda</p></div>
+            <div class="report-toolbar">
+              <button class="secondary-btn" id="reportCsv">Ekspor CSV</button>
+              <button class="secondary-btn" id="reportPrint">Cetak</button>
+              <button class="primary-btn" id="loadReport">Tampilkan</button>
+            </div>
+          </div>
+          <div class="filter-bar">
+            <div class="field"><label for="reportFrom">Dari</label><input id="reportFrom" type="date" /></div>
+            <div class="field"><label for="reportTo">Sampai</label><input id="reportTo" type="date" /></div>
+          </div>
+          <div id="reportStatus" class="report-status"></div>
+          <div class="report-grid">
+            <div class="report-card"><span class="title">Pendapatan Sewa</span><strong id="reportRevenue">Rp0</strong></div>
+            <div class="report-card"><span class="title">Penerimaan Kas</span><strong id="reportPaid">Rp0</strong></div>
+            <div class="report-card"><span class="title">Piutang</span><strong id="reportReceivables">Rp0</strong></div>
+            <div class="report-card"><span class="title">Total Denda</span><strong id="reportFines">Rp0</strong></div>
+            <div class="report-card"><span class="title">Denda Dibayar</span><strong id="reportFinesPaid">Rp0</strong></div>
+            <div class="report-card"><span class="title">Sisa Denda</span><strong id="reportFinesOutstanding">Rp0</strong></div>
+          </div>
+        </div>
+        <div class="panel"><h3>Ringkasan Inventaris</h3><div id="reportInventory"></div></div>
+        <div class="panel"><h3>Detail Penyewaan</h3><div id="reportTable"></div></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="modalOverlay" class="overlay hidden">
+    <div class="modal">
+      <button class="close" id="modalClose">×</button>
+      <h2 id="modalTitle">Detail</h2>
+      <p id="modalDesc"></p>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Struk -->
+  <div id="receiptOverlay" class="overlay receipt-overlay hidden">
+    <div class="receipt-dialog">
+      <div class="receipt-toolbar">
+        <div>
+          <h2>Struk Pembayaran</h2>
+          <p>Préview struk pembayaran ÉLAN</p>
+        </div>
+        <div class="receipt-actions">
+          <button class="secondary-btn" id="receiptClose">Tutup</button>
+          <button class="secondary-btn" id="receiptPdf">Simpan PDF</button>
+          <button class="primary-btn" id="receiptPrint">Cetak Struk</button>
+        </div>
+      </div>
+      <div id="receiptPaper" class="receipt-paper"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js?v=20261010-1828"></script>
+</body>
+</html>
