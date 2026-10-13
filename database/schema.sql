@@ -194,6 +194,33 @@ create table if not exists public.returns (
   created_at timestamptz not null default now()
 );
 
+-- Allow the browser client to use the public anon key without login for this
+-- classroom project. This keeps the frontend connected directly to Supabase.
+drop policy if exists "public_all_dresses" on public.dresses;
+drop policy if exists "public_all_rentals" on public.rentals;
+drop policy if exists "public_all_payments" on public.payments;
+drop policy if exists "public_all_returns" on public.returns;
+
+alter table public.dresses enable row level security;
+alter table public.rentals enable row level security;
+alter table public.payments enable row level security;
+alter table public.returns enable row level security;
+
+create policy "public_all_dresses" on public.dresses
+  for all using (true) with check (true);
+create policy "public_all_rentals" on public.rentals
+  for all using (true) with check (true);
+create policy "public_all_payments" on public.payments
+  for all using (true) with check (true);
+create policy "public_all_returns" on public.returns
+  for all using (true) with check (true);
+
+-- RLS policies do not grant SQL table privileges; the browser uses role anon.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete
+  on public.dresses, public.rentals, public.payments, public.returns
+  to anon, authenticated;
+
 -- Legacy fine payments can be classified when the associated return has only
 -- one assessed fine type; ambiguous historical payments remain uncategorized.
 update public.payments p
@@ -324,7 +351,9 @@ begin
     end if;
   end loop;
 end;
-$$ language plpgsql;
+$$ language plpgsql
+security definer
+set search_path = public, pg_temp;
 
 -- =========================================================
 -- TRIGGER FUNCTIONS: kode otomatis
@@ -741,39 +770,58 @@ $$ language plpgsql;
 -- =========================================================
 -- VIEW: summary per rental
 -- =========================================================
-create or replace view public.v_rental_summary as
-select
-  r.id_penyewaan,
-  r.kode_penyewaan,
-  r.nama_pelanggan,
-  r.no_telepon,
-  d.nama_dress,
-  d.kode_dress,
-  r.tanggal_sewa,
-  r.tanggal_rencana_kembali,
-  r.total_sewa,
-  coalesce(sum(case when p.status_pembayaran = 'Berhasil' and p.jenis_pembayaran <> 'Denda'
-    then p.jumlah_bayar else 0 end), 0) as total_dibayar,
-  r.total_sewa - coalesce(sum(case when p.status_pembayaran = 'Berhasil' and p.jenis_pembayaran <> 'Denda'
-    then p.jumlah_bayar else 0 end), 0) as sisa_tagihan,
-  case
-    when coalesce(sum(case when p.status_pembayaran = 'Berhasil' and p.jenis_pembayaran <> 'Denda'
-      then p.jumlah_bayar else 0 end), 0) = 0 then 'Belum Bayar'
-    when coalesce(sum(case when p.status_pembayaran = 'Berhasil' and p.jenis_pembayaran <> 'Denda'
-      then p.jumlah_bayar else 0 end), 0) >= r.total_sewa then 'Lunas'
-    when exists (select 1 from public.payments p2
-      where p2.id_penyewaan = r.id_penyewaan
-        and p2.status_pembayaran = 'Berhasil'
-        and p2.jenis_pembayaran = 'DP') then 'DP'
-    else 'Cicilan'
-  end as status_pembayaran,
-  r.status_penyewaan
-from public.rentals r
-left join public.dresses d on d.id_dress = r.id_dress
-left join public.payments p on p.id_penyewaan = r.id_penyewaan
-group by r.id_penyewaan, d.nama_dress, d.kode_dress;
+create view public.v_rental_summary with (security_invoker = on) as
+ SELECT r.id_penyewaan,
+    r.kode_penyewaan,
+    r.nama_pelanggan,
+    r.no_telepon,
+    d.nama_dress,
+    d.kode_dress,
+    r.tanggal_sewa,
+    r.tanggal_rencana_kembali,
+    r.total_sewa,
+    COALESCE(sum(
+        CASE
+            WHEN p.status_pembayaran = 'Berhasil'::text AND p.jenis_pembayaran <> 'Denda'::text THEN p.jumlah_bayar
+            ELSE 0::numeric
+        END), 0::numeric) AS total_dibayar,
+    r.total_sewa - COALESCE(sum(
+        CASE
+            WHEN p.status_pembayaran = 'Berhasil'::text AND p.jenis_pembayaran <> 'Denda'::text THEN p.jumlah_bayar
+            ELSE 0::numeric
+        END), 0::numeric) AS sisa_tagihan,
+        CASE
+            WHEN COALESCE(sum(
+            CASE
+                WHEN p.status_pembayaran = 'Berhasil'::text AND p.jenis_pembayaran <> 'Denda'::text THEN p.jumlah_bayar
+                ELSE 0::numeric
+            END), 0::numeric) = 0::numeric THEN 'Belum Bayar'::text
+            WHEN COALESCE(sum(
+            CASE
+                WHEN p.status_pembayaran = 'Berhasil'::text AND p.jenis_pembayaran <> 'Denda'::text THEN p.jumlah_bayar
+                ELSE 0::numeric
+            END), 0::numeric) >= r.total_sewa THEN 'Lunas'::text
+            WHEN (EXISTS ( SELECT 1
+               FROM payments p2
+              WHERE p2.id_penyewaan = r.id_penyewaan AND p2.status_pembayaran = 'Berhasil'::text AND p2.jenis_pembayaran = 'DP'::text)) THEN 'DP'::text
+            ELSE 'Cicilan'::text
+        END AS status_pembayaran,
+    r.status_penyewaan
+   FROM rentals r
+     LEFT JOIN dresses d ON d.id_dress = r.id_dress
+     LEFT JOIN payments p ON p.id_penyewaan = r.id_penyewaan
+  GROUP BY r.id_penyewaan, d.nama_dress, d.kode_dress;
 
 -- Refresh PostgREST's function cache so RPC signature changes are visible.
+grant execute on function public.generate_code(text, date) to anon, authenticated;
+grant execute on function public.create_rental(uuid, text, text, text, text, date, date, numeric, numeric, numeric, text, text)
+  to anon, authenticated;
+grant execute on function public.record_payment(uuid, text, date, numeric, text, text, text, text)
+  to anon, authenticated;
+grant execute on function public.cancel_payment(uuid, text) to anon, authenticated;
+grant execute on function public.cancel_rental(uuid, text) to anon, authenticated;
+grant execute on function public.record_return(uuid, date, text, numeric, numeric, text, text)
+  to anon, authenticated;
 notify pgrst, 'reload schema';
 
 -- =========================================================

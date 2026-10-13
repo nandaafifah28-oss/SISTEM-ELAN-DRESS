@@ -1,9 +1,28 @@
 "use strict";
 
+import {
+  createDress,
+  createPayment,
+  createRental,
+  cancelPayment,
+  cancelRental,
+  deleteDress,
+  generateCode,
+  getDashboard,
+  getDresses,
+  getPayments,
+  getPaymentReceipt,
+  getReportSummary,
+  getRentals,
+  getReturns,
+  isCodeAvailable,
+  recordReturn,
+  updateDress,
+} from "../backend/config.js";
+
 /* =========================================================
    KONFIGURASI
    ========================================================= */
-const API_BASE = "http://127.0.0.1:3001/api";
 
 /* =========================================================
    STATE
@@ -150,33 +169,121 @@ function whatsappChatUrl(number, message) {
   return `https://wa.me/${normalizeWhatsAppNumber(number)}?text=${encodeURIComponent(message)}`;
 }
 
-/* =========================================================
-   API WRAPPER
-   ========================================================= */
-async function api(path, options = {}) {
-  let response;
-  try {
-    response = await fetch(API_BASE + path, {
-      ...options,
-      cache: "no-store",
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    });
-  } catch (err) {
-    throw new Error(`Tidak dapat terhubung ke API (${API_BASE}). Pastikan backend aktif.`);
-  }
-  const text = await response.text();
-  let data = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Respons server tidak valid.");
+async function api(endpoint, options = {}) {
+  const path = endpoint || "/";
+  const method = String(options.method || "GET").toUpperCase();
+  const url = new URL(path, "https://elan.local");
+  const pathname = url.pathname.replace(/\/+$/, "") || "/";
+
+  const parseBody = (body) => {
+    if (body === undefined || body === null || body === "") return {};
+    if (typeof body === "string") {
+      try {
+        return JSON.parse(body) || {};
+      } catch {
+        throw new Error("Format data tidak valid.");
+      }
     }
+    return body;
+  };
+
+  try {
+    if (pathname === "/codes/next") {
+      const prefix = url.searchParams.get("prefix");
+      const date = url.searchParams.get("date") || new Date().toISOString().slice(0, 10);
+      return { code: await generateCode(prefix, date) };
+    }
+
+    if (pathname === "/codes/availability") {
+      const prefix = url.searchParams.get("prefix");
+      const code = url.searchParams.get("code");
+      const excludeId = url.searchParams.get("excludeId");
+      const available = await isCodeAvailable(prefix, code, excludeId || null);
+      return { available };
+    }
+
+    if (pathname === "/dashboard") {
+      return { data: await getDashboard() };
+    }
+
+    if (pathname === "/dresses") {
+      if (method === "GET") return { data: await getDresses() };
+      if (method === "POST") return { data: await createDress(parseBody(options.body)) };
+    }
+
+    if (pathname.startsWith("/dresses/")) {
+      const id = pathname.split("/").slice(-1)[0];
+      if (method === "GET") return { data: await getDresses().then((rows) => rows.find((dress) => dress.id_dress === id) || null) };
+      if (method === "PUT") return { data: await updateDress(id, parseBody(options.body)) };
+      if (method === "DELETE") {
+        const deleted = await deleteDress(id);
+        return { deleted };
+      }
+    }
+
+    if (pathname === "/rentals") {
+      if (method === "GET") return { data: await getRentals() };
+      if (method === "POST") return { data: await createRental(parseBody(options.body)) };
+    }
+
+    if (pathname.startsWith("/rentals/")) {
+      const parts = pathname.split("/").filter(Boolean);
+      const id = parts[1];
+      const action = parts[2];
+      if (method === "GET" && parts.length === 2) {
+        return { data: await getRentals().then((rows) => rows.find((rental) => rental.id_penyewaan === id) || null) };
+      }
+      if ((method === "PATCH" || method === "POST") && action === "cancel") {
+        const payload = parseBody(options.body);
+        return { data: await cancelRental(id, payload?.alasan || payload?.reason || "Dibatalkan") };
+      }
+      if ((method === "PATCH" || method === "POST") && action === "return") {
+        const payload = parseBody(options.body);
+        return { data: await recordReturn(id, payload) };
+      }
+      if ((method === "POST" || method === "PATCH") && action === "payments") {
+        const payload = parseBody(options.body);
+        const paymentPayload = {
+          ...payload,
+          id_penyewaan: id,
+        };
+        return { data: await createPayment(paymentPayload) };
+      }
+    }
+
+    if (pathname === "/payments") {
+      if (method === "GET") return { data: await getPayments() };
+      if (method === "POST") return { data: await createPayment(parseBody(options.body)) };
+    }
+
+    if (pathname.startsWith("/payments/")) {
+      const parts = pathname.split("/").filter(Boolean);
+      const id = parts[1];
+      const action = parts[2];
+      if (method === "GET" && parts.length === 2) {
+        return await getPaymentReceipt(id);
+      }
+      if (method === "PATCH" && action === "cancel") {
+        const payload = parseBody(options.body);
+        return { data: await cancelPayment(id, payload?.alasan || payload?.reason || "Dibatalkan") };
+      }
+    }
+
+    if (pathname === "/returns") {
+      if (method === "GET") return { data: await getReturns() };
+      if (method === "POST") return { data: await recordReturn(parseBody(options.body)?.id_penyewaan, parseBody(options.body)) };
+    }
+
+    if (pathname === "/reports/summary") {
+      const from = url.searchParams.get("from");
+      const to = url.searchParams.get("to");
+      return { data: await getReportSummary(from, to) };
+    }
+  } catch (error) {
+    throw new Error(error.message || "Operasi data gagal.");
   }
-  if (!response.ok) {
-    throw new Error(data?.error || `Permintaan gagal (HTTP ${response.status}).`);
-  }
-  return data;
+
+  throw new Error(`Endpoint tidak didukung: ${pathname}`);
 }
 
 const CODE_FIELDS = [
@@ -265,17 +372,34 @@ function go(page) {
    DASHBOARD
    ========================================================= */
 async function loadDashboard() {
+  ["#statDressTotal", "#statDressAvailable", "#statDressRented", "#statRentalTotal",
+    "#statPaymentTotal", "#statReturnTotal", "#statRevenue"].forEach((selector) => {
+    const element = $(selector);
+    if (element) element.textContent = "Memuat...";
+  });
   try {
-    const data = await api("/dashboard");
+    const response = await api("/dashboard");
+    const data = response.data;
     S.dashboard = data;
 
-    $("#statDressTotal").textContent = data.total_dress;
-    $("#statDressAvailable").textContent = data.available_dresses;
-    $("#statDressRented").textContent = data.rented_dresses;
+    const stats = {
+      "#statDressTotal": data.total_dress,
+      "#statDressAvailable": data.available_dresses,
+      "#statDressRented": data.rented_dresses,
+      "#statRentalTotal": data.total_rentals,
+      "#statPaymentTotal": data.total_payments,
+      "#statReturnTotal": data.total_returns,
+      "#statRevenue": money(data.total_revenue),
+    };
+    Object.entries(stats).forEach(([selector, value]) => {
+      const element = $(selector);
+      if (element) element.textContent = value;
+    });
   } catch (error) {
     console.error(error);
     S.dashboard = null;
-    ["#statDressTotal", "#statDressAvailable", "#statDressRented"].forEach((selector) => {
+    ["#statDressTotal", "#statDressAvailable", "#statDressRented", "#statRentalTotal",
+      "#statPaymentTotal", "#statReturnTotal", "#statRevenue"].forEach((selector) => {
       const element = $(selector);
       if (element) element.textContent = "—";
     });
@@ -338,11 +462,12 @@ function renderDresses() {
   });
 
   $("#dressesTable").innerHTML = table(
-    ["Kode", "Nama Dress", "Ukuran", "Warna", "Tarif Sewa", "Status", "Aksi"],
+    ["Kode", "Nama Dress", "Kategori", "Ukuran", "Warna", "Tarif Sewa", "Status", "Aksi"],
     rows.map((d) =>
       `<tr>
         <td><b>${esc(d.kode_dress)}</b></td>
         <td>${esc(d.nama_dress)}</td>
+        <td>${esc(d.kategori || "Lainnya")}</td>
         <td>${esc(d.ukuran)}</td>
         <td>${esc(d.warna)}</td>
         <td>${money(d.tarif_sewa)}</td>
@@ -870,9 +995,10 @@ async function loadReport() {
   $("#reportStatus").textContent = "Mengambil data laporan...";
 
   try {
-    const data = await api(
+    const response = await api(
       `/reports/summary?from=${encodeURIComponent(from.value)}&to=${encodeURIComponent(to.value)}`
     );
+    const data = response.data;
     S.report = data;
 
     $("#reportRevenue").textContent = money(data.total_rental_revenue);
@@ -1093,7 +1219,9 @@ function bindEvents() {
       }
       if (history) {
         try {
-          const rental = await api(`/rentals/${encodeURIComponent(history.dataset.rentalHistory)}`);
+          const response = await api(`/rentals/${encodeURIComponent(history.dataset.rentalHistory)}`);
+          const rental = response.data;
+          if (!rental) throw new Error("Data penyewaan tidak ditemukan.");
           const existing = S.rentals.find((item) => item.id_penyewaan === rental.id_penyewaan);
           if (existing) Object.assign(existing, rental);
           else S.rentals.push(rental);

@@ -4,7 +4,11 @@
 
 **ÉLAN** adalah aplikasi berbasis web untuk mengelola inventaris dress, transaksi penyewaan, pembayaran, pengembalian, denda, dan laporan penerimaan kas secara terintegrasi menggunakan PostgreSQL melalui Supabase.
 
+<<<<<<< HEAD
 [![Buka Sistem ÉLAN](https://img.shields.io/badge/✨_KLIK_DI_SINI_UNTUK_BUKA_SISTEM-C08A58?style=for-the-badge&labelColor=3B302A)](https://nandaafifah28-oss.github.io/SISTEM-ELAN-DRESS/)
+=======
+[![Buka Sistem ÉLAN](https://img.shields.io/badge/✨_KLIK_DI_SINI_UNTUK_BUKA_SISTEM-C08A58?style=for-the-badge&labelColor=3B302A)](https://nandaafifah1714.github.io/ELAN-DRESS-SISTEM/)
+>>>>>>> 1c962f9 (Revisi sistem ELAN Dress Rental)
 ---
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
@@ -212,6 +216,8 @@ Keterangan:
 3. Jalankan isi file `database/schema.sql` sesuai petunjuk dan kondisi database.
 4. Pastikan backend menggunakan URL dan key Supabase yang sesuai dengan project.
 5. Jangan pernah menaruh secret/service-role key pada frontend atau repository publik.
+
+Jika project sudah memakai skema lama dan aplikasi menampilkan `permission denied for table dresses`, terapkan ulang versi terbaru `database/schema.sql` pada SQL Editor. Kebijakan RLS saja tidak cukup; role `anon` juga membutuhkan hak tabel yang sekarang diberikan oleh skema tersebut.
 
 **Penting:** `backend/config.js` adalah satu-satunya komponen yang mengakses Supabase. Backend menerima `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` (atau `SUPABASE_PUBLISHABLE_KEY`) dari environment. Jangan memasukkan secret/service-role key ke frontend, repository publik, atau dokumentasi.
 

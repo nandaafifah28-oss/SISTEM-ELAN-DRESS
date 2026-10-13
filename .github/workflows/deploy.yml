@@ -7,6 +7,8 @@ on:
       - main
     paths:
       - "frontend/**"
+      - "database/**"
+      - "README.md"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
@@ -33,7 +35,7 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload frontend files
+      - name: Upload static frontend
         uses: actions/upload-pages-artifact@v3
         with:
           path: frontend
