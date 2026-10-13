@@ -1,15 +1,9 @@
-
-name: Deploy ELAN frontend to GitHub Pages
+name: Deploy ELAN DRESS to GitHub Pages
 
 on:
   push:
     branches:
       - main
-    paths:
-      - "frontend/**"
-      - "database/**"
-      - "README.md"
-      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 permissions:
@@ -18,28 +12,38 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare website
+        run: |
+          mkdir -p public/backend
+          cp frontend/index.html public/index.html
+          cp frontend/app.js public/app.js
+          cp frontend/style.css public/style.css
+          cp backend/config.js public/backend/config.js
+          sed -i 's|\.\./backend/config\.js|./backend/config.js|g' public/app.js
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload static frontend
+      - name: Upload website
         uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend
+          path: public
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy website
         id: deployment
         uses: actions/deploy-pages@v4
