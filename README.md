@@ -4,7 +4,7 @@
 
 **ÉLAN** adalah aplikasi berbasis web untuk mengelola inventaris dress, transaksi penyewaan, pembayaran, pengembalian, denda, dan laporan penerimaan kas secara terintegrasi menggunakan PostgreSQL melalui Supabase.
 
-[![Buka Sistem ÉLAN](https://img.shields.io/badge/✨_KLIK_DI_SINI_UNTUK_BUKA_SISTEM-C08A58?style=for-the-badge&labelColor=3B302A)](https://nandaafifah28.github.io/SISTEM-ELAN-DRESS/)
+[![Buka Sistem ÉLAN](https://img.shields.io/badge/✨_KLIK_DI_SINI_UNTUK_BUKA_SISTEM-C08A58?style=for-the-badge&labelColor=3B302A)](https://https://nandaafifah28-oss.github.io/SISTEM-ELAN-DRESS/)
 ---
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
