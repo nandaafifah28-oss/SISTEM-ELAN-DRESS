@@ -1008,6 +1008,23 @@ async function loadReport() {
     $("#reportFinesPaid").textContent = money(data.total_fines_paid);
     $("#reportFinesOutstanding").textContent = money(data.total_fines_outstanding);
 
+    $("#reportFineTable").innerHTML = table(
+      ["Tanggal Kembali", "Kode Penyewaan", "Pelanggan", "Kategori", "Denda", "Dibayar", "Sisa", "Status"],
+      (data.fine_rows || []).map((fine) =>
+        `<tr>
+          <td>${esc(fine.tanggal_kembali_aktual || "-")}</td>
+          <td><b>${esc(fine.kode_penyewaan || "-")}</b></td>
+          <td>${esc(fine.nama_pelanggan || "-")}</td>
+          <td>${esc(fine.kategori_denda)}</td>
+          <td>${money(fine.nominal_denda)}</td>
+          <td>${money(fine.nominal_dibayar)}</td>
+          <td>${money(fine.sisa_denda)}</td>
+          <td>${statusPill(fine.status_denda)}</td>
+        </tr>`
+      ),
+      "Belum ada denda pada periode ini."
+    );
+
     const inv = data.inventory_summary || {};
     $("#reportInventory").innerHTML = `
       <div class="report-grid">
@@ -1036,7 +1053,7 @@ async function loadReport() {
 
     $("#reportStatus").textContent =
       `Periode ${from.value} s/d ${to.value} · ${data.rental_rows?.length || 0} transaksi sewa · ` +
-      "total denda mengikuti tanggal kembali aktual; denda dibayar mengikuti tanggal pembayaran aktual.";
+      "denda mengikuti tanggal kembali aktual; penerimaan denda mengikuti tanggal pembayaran aktual; sisa dihitung dari pembayaran berhasil untuk tagihan denda pada periode tersebut.";
   } catch (error) {
     $("#reportStatus").textContent = "Laporan gagal dimuat: " + error.message;
     toast(error.message, "err");
@@ -1515,6 +1532,14 @@ function bindEvents() {
         ["Total Denda", S.report.total_fines || 0],
         ["Denda Dibayar", S.report.total_fines_paid || 0],
         ["Sisa Denda", S.report.total_fines_outstanding || 0],
+        [],
+        ["Detail Denda"],
+        ["Tanggal Kembali", "Kode Penyewaan", "Pelanggan", "Kategori", "Denda", "Dibayar", "Sisa", "Status"],
+        ...(S.report.fine_rows || []).map((fine) => [
+          fine.tanggal_kembali_aktual, fine.kode_penyewaan, fine.nama_pelanggan,
+          fine.kategori_denda, fine.nominal_denda, fine.nominal_dibayar,
+          fine.sisa_denda, fine.status_denda,
+        ]),
         [],
         ["Detail Penyewaan"],
         ["Kode", "Tanggal", "Pelanggan", "Total Sewa", "Dibayar", "Sisa", "Status"],

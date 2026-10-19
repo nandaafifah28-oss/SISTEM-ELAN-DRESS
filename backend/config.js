@@ -1,4 +1,4 @@
-﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+﻿﻿import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = "https://yuikckkxcayfliajedwb.supabase.co";
 const SUPABASE_KEY = "sb_publishable_jgv_HoorUuUg8Ok5cPDOQg_NPip4WPr";
@@ -460,7 +460,7 @@ export async function getReportSummary(fromDate, toDate) {
   const from = String(fromDate || new Date().toISOString().slice(0, 10));
   const to = String(toDate || from);
 
-  const [rentalResult, paymentsResult, returnsResult, dressesResult] = await Promise.all([
+  const [rentalResult, paymentsResult, returnsResult, dressesResult, finePaymentsResult] = await Promise.all([
     supabase
       .from("rentals")
       .select("*")
@@ -469,18 +469,35 @@ export async function getReportSummary(fromDate, toDate) {
       .order("tanggal_sewa", { ascending: false }),
     supabase.from("payments").select("*").gte("tanggal_bayar", from).lte("tanggal_bayar", to),
     supabase.from("returns").select("*").gte("tanggal_kembali_aktual", from).lte("tanggal_kembali_aktual", to),
-    supabase.from("dresses").select("id_dress,status")
+    supabase.from("dresses").select("id_dress,status"),
+    supabase
+      .from("payments")
+      .select("id_penyewaan,kategori_denda,jumlah_bayar,status_pembayaran")
+      .eq("jenis_pembayaran", "Denda")
   ]);
 
   if (rentalResult.error) throw new Error(rentalResult.error.message || "Gagal memuat laporan penyewaan.");
   if (paymentsResult.error) throw new Error(paymentsResult.error.message || "Gagal memuat laporan pembayaran.");
   if (returnsResult.error) throw new Error(returnsResult.error.message || "Gagal memuat laporan pengembalian.");
   if (dressesResult.error) throw new Error(dressesResult.error.message || "Gagal memuat laporan dress.");
+  if (finePaymentsResult.error) throw new Error(finePaymentsResult.error.message || "Gagal memuat pembayaran denda.");
 
   const rentals = safeArray(rentalResult.data);
   const payments = safeArray(paymentsResult.data);
   const returns = safeArray(returnsResult.data);
   const dresses = safeArray(dressesResult.data);
+  const finePayments = safeArray(finePaymentsResult.data);
+  const fineRentalIds = [...new Set(returns.map((item) => item.id_penyewaan).filter(Boolean))];
+  let fineRentals = [];
+  if (fineRentalIds.length) {
+    const fineRentalsResult = await supabase
+      .from("rentals")
+      .select("id_penyewaan,kode_penyewaan,nama_pelanggan")
+      .in("id_penyewaan", fineRentalIds);
+    if (fineRentalsResult.error) throw new Error(fineRentalsResult.error.message || "Gagal memuat penyewaan untuk laporan denda.");
+    fineRentals = safeArray(fineRentalsResult.data);
+  }
+  const fineRentalMap = new Map(fineRentals.map((rental) => [rental.id_penyewaan, rental]));
 
   const rentalPayments = new Map();
   payments
@@ -502,7 +519,48 @@ export async function getReportSummary(fromDate, toDate) {
   const totalFinesPaid = payments
     .filter((payment) => payment.status_pembayaran === "Berhasil" && payment.jenis_pembayaran === "Denda")
     .reduce((sum, payment) => sum + normalizeNumber(payment.jumlah_bayar, 0), 0);
-  const totalFinesOutstanding = Math.max(totalFines - totalFinesPaid, 0);
+  const finePaymentsByCategory = new Map();
+  finePayments
+    .filter((payment) => payment.status_pembayaran === "Berhasil")
+    .forEach((payment) => {
+      const key = `${payment.id_penyewaan}:${payment.kategori_denda}`;
+      finePaymentsByCategory.set(
+        key,
+        (finePaymentsByCategory.get(key) || 0) + normalizeNumber(payment.jumlah_bayar, 0)
+      );
+    });
+  const fine_rows = returns.flatMap((item) => {
+    const rental = fineRentalMap.get(item.id_penyewaan) || {};
+    return [
+      {
+        kategori_denda: "Keterlambatan",
+        nominal_denda: normalizeNumber(item.denda_keterlambatan, 0),
+      },
+      {
+        kategori_denda: "Kerusakan/Kehilangan",
+        nominal_denda: normalizeNumber(item.denda_kerusakan, 0),
+      },
+    ]
+      .filter((fine) => fine.nominal_denda > 0)
+      .map((fine) => {
+        const nominal_dibayar = finePaymentsByCategory.get(
+          `${item.id_penyewaan}:${fine.kategori_denda}`
+        ) || 0;
+        const sisa_denda = Math.max(fine.nominal_denda - nominal_dibayar, 0);
+        return {
+          id_penyewaan: item.id_penyewaan,
+          kode_penyewaan: rental.kode_penyewaan || null,
+          nama_pelanggan: rental.nama_pelanggan || null,
+          tanggal_kembali_aktual: item.tanggal_kembali_aktual,
+          kategori_denda: fine.kategori_denda,
+          nominal_denda: fine.nominal_denda,
+          nominal_dibayar,
+          sisa_denda,
+          status_denda: sisa_denda <= 0 ? "Lunas" : nominal_dibayar > 0 ? "Dibayar Sebagian" : "Belum Dibayar",
+        };
+      });
+  });
+  const totalFinesOutstanding = fine_rows.reduce((sum, fine) => sum + fine.sisa_denda, 0);
 
   return {
     total_rental_revenue: totalRentalRevenue,
@@ -511,6 +569,7 @@ export async function getReportSummary(fromDate, toDate) {
     total_fines: totalFines,
     total_fines_paid: totalFinesPaid,
     total_fines_outstanding: totalFinesOutstanding,
+    fine_rows,
     inventory_summary: {
       total: dresses.length,
       tersedia: dresses.filter((dress) => dress.status === "Tersedia").length,

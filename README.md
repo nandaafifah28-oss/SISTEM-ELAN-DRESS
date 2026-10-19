@@ -96,7 +96,7 @@ Pembayaran denda dikaitkan dengan penyewaan dan kategori denda yang sesuai agar 
 
 Menyajikan informasi penerimaan kas berdasarkan pembayaran yang berhasil dicatat pada periode yang dipilih.
 
-Laporan membedakan penerimaan kas dari nilai tagihan, pendapatan yang diakui, dan denda yang belum dibayar. Cakupan laporan mengikuti jenis transaksi yang benar-benar didukung dan tercatat dalam database.
+Laporan membedakan penerimaan kas dari nilai tagihan, pendapatan yang diakui, dan denda yang belum dibayar. Detail denda dikelompokkan menurut tanggal kembali aktual dan kategori denda, menampilkan nominal, pembayaran berhasil, sisa tagihan, serta status. Cakupan laporan mengikuti jenis transaksi yang benar-benar didukung dan tercatat dalam database.
 
 ### 🧾 Nota Pembayaran
 
